@@ -1,0 +1,60 @@
+# .pipelines/perf-nightly.yml
+#
+# Required variable group "perf-tests-secrets" must contain:
+#   (same set as perf-gate.yml — see that file for the full list)
+#
+# This pipeline runs the smoke scenario nightly for visibility.
+# Switch to tests/scenarios/load.js if you want a full nightly soak test.
+
+trigger: none
+
+schedules:
+  - cron: "0 2 * * *"
+    displayName: Nightly 02:00 UTC
+    branches:
+      include:
+        - main
+    always: true   # run even if no new commits
+
+# NOTE: Switch to a self-hosted pool if ADF/storage are behind private endpoints.
+#   pool:
+#     name: <YOUR-SELF-HOSTED-POOL-NAME>   # TODO: set pool name
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  - group: perf-tests-secrets
+
+steps:
+  - script: |
+      curl -fsSL https://dl.k6.io/key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/k6-archive-keyring.gpg
+      echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" \
+        | sudo tee /etc/apt/sources.list.d/k6.list
+      sudo apt-get update -qq
+      sudo apt-get install -y k6
+    displayName: Install k6
+
+  - script: mkdir -p results
+    displayName: Create results directory
+
+  - script: |
+      k6 run tests/scenarios/smoke.js
+    displayName: Run k6 smoke test (nightly)
+    env:
+      TENANT_ID:            $(TENANT_ID)
+      CLIENT_ID:            $(CLIENT_ID)
+      CLIENT_SECRET:        $(CLIENT_SECRET)
+      SUBSCRIPTION_ID:      $(SUBSCRIPTION_ID)
+      RESOURCE_GROUP:       $(RESOURCE_GROUP)
+      ADF_FACTORY_NAME:     $(ADF_FACTORY_NAME)
+      ADF_PIPELINE_NAME:    $(ADF_PIPELINE_NAME)
+      STORAGE_ACCOUNT_NAME: $(STORAGE_ACCOUNT_NAME)
+      BLOB_CONTAINER_NAME:  $(BLOB_CONTAINER_NAME)
+
+  - task: PublishTestResults@2
+    displayName: Publish JUnit results
+    condition: always()
+    inputs:
+      testResultsFormat:     JUnit
+      testResultsFiles:      results/summary.xml
+      failTaskOnFailedTests: false   # visibility only — does not block nightly
