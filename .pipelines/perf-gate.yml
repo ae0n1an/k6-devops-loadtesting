@@ -1,0 +1,64 @@
+# .pipelines/perf-gate.yml
+#
+# Required variable group "perf-tests-secrets" must contain:
+#   TENANT_ID           — Azure AD tenant ID (AAD > Overview > Tenant ID)
+#   CLIENT_ID           — App registration client / application ID
+#   CLIENT_SECRET       — App registration client secret value
+#   SUBSCRIPTION_ID     — Azure subscription ID
+#   RESOURCE_GROUP      — Resource group containing the ADF instance
+#   ADF_FACTORY_NAME    — Data Factory name
+#   ADF_PIPELINE_NAME   — Pipeline name to trigger
+#   STORAGE_ACCOUNT_NAME — Storage account name ("TMH source" container's account)
+#   BLOB_CONTAINER_NAME  — Container name (e.g. "tmh-source")
+
+trigger: none   # only runs as a PR branch policy check
+
+pr:
+  branches:
+    include:
+      - main
+
+# NOTE: Switch pool to a self-hosted agent if ADF/storage endpoints are on a
+# private network (VNet-injected ADF, private endpoints, etc.).
+# Replace the pool block below with:
+#   pool:
+#     name: <YOUR-SELF-HOSTED-POOL-NAME>   # TODO: set pool name
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  - group: perf-tests-secrets
+
+steps:
+  - script: |
+      curl -fsSL https://dl.k6.io/key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/k6-archive-keyring.gpg
+      echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" \
+        | sudo tee /etc/apt/sources.list.d/k6.list
+      sudo apt-get update -qq
+      sudo apt-get install -y k6
+    displayName: Install k6
+
+  - script: mkdir -p results
+    displayName: Create results directory
+
+  - script: |
+      k6 run tests/scenarios/load.js
+    displayName: Run k6 load test
+    env:
+      TENANT_ID:            $(TENANT_ID)
+      CLIENT_ID:            $(CLIENT_ID)
+      CLIENT_SECRET:        $(CLIENT_SECRET)
+      SUBSCRIPTION_ID:      $(SUBSCRIPTION_ID)
+      RESOURCE_GROUP:       $(RESOURCE_GROUP)
+      ADF_FACTORY_NAME:     $(ADF_FACTORY_NAME)
+      ADF_PIPELINE_NAME:    $(ADF_PIPELINE_NAME)
+      STORAGE_ACCOUNT_NAME: $(STORAGE_ACCOUNT_NAME)
+      BLOB_CONTAINER_NAME:  $(BLOB_CONTAINER_NAME)
+
+  - task: PublishTestResults@2
+    displayName: Publish JUnit results
+    condition: always()
+    inputs:
+      testResultsFormat:     JUnit
+      testResultsFiles:      results/summary.xml
+      failTaskOnFailedTests: true
