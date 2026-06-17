@@ -8,7 +8,7 @@ import { check } from 'k6';
  * @param {string} clientId
  * @param {string} clientSecret
  * @param {string} [scope='https://management.azure.com/.default']
- * @returns {string} access_token
+ * @returns {string|null} access_token
  */
 export function getServicePrincipalToken(
   tenantId,
@@ -38,5 +38,10 @@ export function getServicePrincipalToken(
     return null;
   }
 
-  return JSON.parse(res.body).access_token;
+  try {
+    return JSON.parse(res.body).access_token;
+  } catch (e) {
+    console.error(`auth: failed to parse token response: ${e.message}`);
+    return null;
+  }
 }
