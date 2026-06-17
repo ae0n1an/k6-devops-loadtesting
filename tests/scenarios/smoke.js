@@ -71,9 +71,60 @@ export default function () {
   }
 
   // Step 5 — record duration and assert
+  if (!TERMINAL.has(runStatus)) {
+    console.error(`Pipeline ${runId} did not reach terminal state within ${timeoutMs}ms (last status: ${runStatus})`);
+  }
   adfPipelineDuration.add(Date.now() - startTime);
 
   check(runStatus, {
     'adf pipeline succeeded': (s) => s === 'Succeeded',
   });
+}
+
+// ---------------------------------------------------------------------------
+// JUnit XML summary — inline so no remote imports are required
+// ---------------------------------------------------------------------------
+function buildJUnit(data) {
+  const checks  = data.metrics['checks'] || {};
+  const passed  = checks.values ? (checks.values.passes || 0) : 0;
+  const failed  = checks.values ? (checks.values.fails  || 0) : 0;
+  const total   = passed + failed;
+  const duration = (data.state.testRunDurationMs / 1000).toFixed(3);
+
+  const failureXml = failed > 0
+    ? `<failure message="${failed} check(s) failed">See k6 stdout for details</failure>`
+    : '';
+
+  function thresholdCases(metricName) {
+    const m = data.metrics[metricName];
+    if (!m || !m.thresholds) return '';
+    return Object.entries(m.thresholds)
+      .filter(([, v]) => !v.ok)
+      .map(([k]) => `<failure message="threshold violated: ${k}"/>`)
+      .join('\n      ');
+  }
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="k6" tests="${total}" failures="${failed}" time="${duration}">
+    <testcase name="k6 checks" classname="k6.smoke" time="${duration}">
+      ${failureXml}
+    </testcase>
+    <testcase name="threshold: http_req_failed rate&lt;0.01" classname="k6.thresholds" time="0">
+      ${thresholdCases('http_req_failed')}
+    </testcase>
+    <testcase name="threshold: http_req_duration p(95)&lt;2000" classname="k6.thresholds" time="0">
+      ${thresholdCases('http_req_duration')}
+    </testcase>
+    <testcase name="threshold: adf_pipeline_duration_ms p(95)&lt;600000" classname="k6.thresholds" time="0">
+      ${thresholdCases('adf_pipeline_duration_ms')}
+    </testcase>
+  </testsuite>
+</testsuites>`;
+}
+
+export function handleSummary(data) {
+  return {
+    'results/summary.xml': buildJUnit(data),
+  };
 }
