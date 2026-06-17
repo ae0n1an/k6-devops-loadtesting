@@ -43,9 +43,9 @@ Azure AD → Blob Storage → ADF trigger → ADF poll loop → terminal state
 
 If any step in that chain degrades, the final duration metric captures it.
 
-### Why k6
+### Why plain JavaScript with no dependencies
 
-k6 runs plain JavaScript with no runtime dependencies — no JVM, no npm, no container image requirements beyond the binary itself. This makes it trivial to install on any agent and eliminates dependency management as a maintenance surface. It also exposes HTTP-level metrics (latency, failure rate) as first-class citizens without any instrumentation code.
+The test runner executes plain JavaScript with no runtime dependencies — no JVM, no npm, no container image requirements beyond the binary itself. This makes it trivial to install on any agent and eliminates dependency management as a maintenance surface. It also exposes HTTP-level metrics (latency, failure rate) as first-class citizens without any instrumentation code.
 
 ### Why synthetic data
 
@@ -177,7 +177,7 @@ A test run **passes** when all three thresholds hold AND every `check()` asserti
 | `adf: run status retrieved (200)` | Status polls return valid responses |
 | `adf pipeline succeeded` | Pipeline reached `Succeeded` state |
 
-A single failed check does not immediately trip the threshold — k6 aggregates checks across all VUs and iterations. However, a run where the ADF pipeline consistently fails (`Succeeded` check fails) will produce 100% failure on `http_req_failed` for the downstream polls, which will trip the rate threshold.
+A single failed check does not immediately trip the threshold — the test runner aggregates checks across all VUs and iterations. However, a run where the ADF pipeline consistently fails (`Succeeded` check fails) will produce 100% failure on `http_req_failed` for the downstream polls, which will trip the rate threshold.
 
 ---
 
@@ -189,7 +189,7 @@ Wired to `main` via Azure DevOps branch policy. Every PR to `main` must pass the
 
 `failTaskOnFailedTests: true` on the `PublishTestResults` step means ADO marks the pipeline task as failed if the JUnit XML contains failures, which in turn blocks the PR policy.
 
-`condition: always()` on `PublishTestResults` ensures the JUnit XML is published even when k6 exits non-zero — giving the reviewer a detailed failure report regardless of outcome.
+`condition: always()` on `PublishTestResults` ensures the JUnit XML is published even when the test runner exits non-zero — giving the reviewer a detailed failure report regardless of outcome.
 
 ### Nightly (`perf-nightly.yml`)
 
@@ -208,11 +208,11 @@ Runs at 02:00 UTC daily on `main`, even with no new commits (`always: true`). Th
 
 | Requirement | Detail |
 |---|---|
-| k6 binary | Pre-installed on agent, or uncomment the install step in the YAML |
+| Test runner binary | Pre-installed on agent, or uncomment the install step in the YAML |
 | Agent network access | Must reach `login.microsoftonline.com`, `management.azure.com`, `{account}.blob.core.windows.net` — use a self-hosted agent if these are behind a private endpoint |
 | Service principal | Must exist in the Azure AD tenant; needs `Data Factory Contributor` on the ADF instance and `Storage Blob Data Contributor` on the container |
 | Variable group | `perf-tests-secrets` in ADO Library with all 9 secrets linked to both pipelines |
-| `results/` directory | Created at runtime by `mkdir -p results` before k6 runs |
+| `results/` directory | Created at runtime by `mkdir -p results` before the test runs |
 
 ---
 
@@ -222,7 +222,7 @@ Runs at 02:00 UTC daily on `main`, even with no new commits (`always: true`). Th
 
 **Token lifetime:** Tokens are fetched fresh at the start of each VU iteration. The load scenario runs for 5 minutes, well within the 60-minute token lifetime. If `duration` is extended beyond 60 minutes, tokens will expire mid-run and the test will fail with 401s. A token-refresh strategy would be needed for longer soak tests.
 
-**Clock skew in duration metric:** `adf_pipeline_duration_ms` measures wall clock time on the k6 agent, not ADF-reported execution time. Network latency to the management plane (typically < 200 ms) is included. This is acceptable for a regression gate but should be noted if comparing against ADF Studio's reported durations.
+**Clock skew in duration metric:** `adf_pipeline_duration_ms` measures wall clock time on the test agent, not ADF-reported execution time. Network latency to the management plane (typically < 200 ms) is included. This is acceptable for a regression gate but should be noted if comparing against ADF Studio's reported durations.
 
 **No teardown / cleanup:** Blobs written to the container during the test are not deleted. Over time this accumulates test artefacts. A lifecycle management policy on the container (e.g., delete blobs older than 7 days with the `smoke-` or `load-` prefix) is recommended.
 
@@ -235,6 +235,6 @@ Runs at 02:00 UTC daily on `main`, even with no new commits (`always: true`). Th
 - **Tighten `adf_pipeline_duration_ms` threshold** after collecting two weeks of baseline data
 - **Parameterise VU count and duration** via environment variables so the same script can serve both a quick PR check and a longer soak test without code changes
 - **Add a ramp-up stage** (e.g., 0→5 VUs over 30 seconds) to better simulate realistic load patterns and avoid cold-start spikes skewing the first iteration
-- **Separate thresholds by request type** using k6 tags or named groups, so blob upload latency and ADF poll latency are reported independently
+- **Separate thresholds by request type** using tags or named groups, so blob upload latency and ADF poll latency are reported independently
 - **Pipeline parameter testing** — extend `triggerPipeline` to accept optional parameters for testing different pipeline execution paths
 - **Alert on nightly failures** via ADO notification rules or a webhook to a Slack/Teams channel

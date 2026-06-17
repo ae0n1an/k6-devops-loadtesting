@@ -1,8 +1,8 @@
-# k6 ADF Performance Tests
+# ADF Pipeline Performance Tests
 
-End-to-end performance tests for the Azure Data Factory pipeline. Written in k6
-(plain JS, no npm dependencies) and wired into Azure DevOps as a PR branch policy
-gate and a nightly scheduled run.
+End-to-end performance tests for the Azure Data Factory pipeline. Written in plain
+JavaScript with no npm dependencies, and wired into Azure DevOps as a PR branch
+policy gate and a nightly scheduled run.
 
 ---
 
@@ -22,7 +22,7 @@ tests/
     smoke.js         # 1 VU × 1 iteration — sanity check
     load.js          # 5 VU × 5 min — PR gate / load test
   thresholds/
-    gate.json        # Shared k6 threshold definitions
+    gate.json        # Shared threshold definitions
 results/             # JUnit XML written here at runtime (git-ignored)
 ```
 
@@ -30,21 +30,9 @@ results/             # JUnit XML written here at runtime (git-ignored)
 
 ## Prerequisites
 
-Install [k6](https://k6.io/docs/get-started/installation/):
-
-```bash
-# macOS
-brew install k6
-
-# Ubuntu / Debian
-sudo gpg --no-default-keyring \
-  --keyring /usr/share/keyrings/k6-archive-keyring.gpg \
-  --keyserver hkp://keyserver.ubuntu.com:80 \
-  --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
-echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" \
-  | sudo tee /etc/apt/sources.list.d/k6.list
-sudo apt-get update && sudo apt-get install k6
-```
+The performance test runner binary must be available in your `PATH`. See the pool
+configuration comments in `.pipelines/perf-gate.yml` for install options including
+a commented-out bootstrap script.
 
 ---
 
