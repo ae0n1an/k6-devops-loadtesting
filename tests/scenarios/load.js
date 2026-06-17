@@ -65,6 +65,9 @@ export default function () {
     if (TERMINAL.has(runStatus)) break;
   }
 
+  if (!TERMINAL.has(runStatus)) {
+    console.error(`Pipeline ${runId} did not reach terminal state within ${timeoutMs}ms (last status: ${runStatus})`);
+  }
   adfPipelineDuration.add(Date.now() - startTime);
 
   check(runStatus, {
