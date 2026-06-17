@@ -7,7 +7,7 @@ import { check } from 'k6';
  * @param {string} accountName   - Storage account name
  * @param {string} containerName - Container name
  * @param {string} blobName      - Blob path/name (e.g. "run-123.json")
- * @param {string} payload       - JSON string to upload
+ * @param {string} payload       - JSON-serialised payload string (use JSON.stringify before passing)
  * @param {string} token         - Bearer token (storage.azure.com scope)
  */
 export function uploadBlob(accountName, containerName, blobName, payload, token) {
@@ -29,4 +29,6 @@ export function uploadBlob(accountName, containerName, blobName, payload, token)
   if (res.status !== 201) {
     console.error(`blob upload failed (${res.status}): ${res.body}`);
   }
+
+  return res;
 }
