@@ -16,6 +16,8 @@ export const options = {
   thresholds: gate,
 };
 
+const TERMINAL = new Set(['Succeeded', 'Failed', 'Cancelled']);
+
 export default function () {
   const tenantId       = __ENV.TENANT_ID;
   const clientId       = __ENV.CLIENT_ID;
@@ -42,7 +44,11 @@ export default function () {
   // Step 2 — upload synthetic payload
   const records  = generatePayload(10);
   const blobName = `smoke-${Date.now()}.json`;
-  uploadBlob(storageAccount, containerName, blobName, JSON.stringify(records), storageToken);
+  const blobRes = uploadBlob(storageAccount, containerName, blobName, JSON.stringify(records), storageToken);
+  if (!blobRes || blobRes.status !== 201) {
+    console.error('Blob upload failed — aborting iteration');
+    return;
+  }
 
   // Step 3 — trigger pipeline
   const runId = triggerPipeline(subscriptionId, resourceGroup, factoryName, pipelineName, mgmtToken);
@@ -55,7 +61,6 @@ export default function () {
   // Step 4 — poll until terminal state (max 10 minutes)
   const startTime  = Date.now();
   const timeoutMs  = 10 * 60 * 1000;
-  const TERMINAL   = new Set(['Succeeded', 'Failed', 'Cancelled']);
   let   runStatus  = 'InProgress';
 
   while (Date.now() - startTime < timeoutMs) {
