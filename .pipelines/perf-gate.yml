@@ -8,8 +8,10 @@
 #   RESOURCE_GROUP      — Resource group containing the ADF instance
 #   ADF_FACTORY_NAME    — Data Factory name
 #   ADF_PIPELINE_NAME   — Pipeline name to trigger
-#   STORAGE_ACCOUNT_NAME — Storage account name ("TMH source" container's account)
-#   BLOB_CONTAINER_NAME  — Container name (e.g. "tmh-source")
+#   STORAGE_ACCOUNT_NAME        — Storage account name ("TMH source" container's account)
+#   BLOB_CONTAINER_NAME         — Source container name (e.g. "tmh-source")
+#   OUTPUT_STORAGE_ACCOUNT_NAME — Storage account name for pipeline output (ESFX blob destination)
+#   OUTPUT_BLOB_CONTAINER_NAME  — Output container name
 
 trigger: none   # only runs as a PR branch policy check
 
@@ -68,8 +70,10 @@ steps:
       RESOURCE_GROUP:       $(RESOURCE_GROUP)
       ADF_FACTORY_NAME:     $(ADF_FACTORY_NAME)
       ADF_PIPELINE_NAME:    $(ADF_PIPELINE_NAME)
-      STORAGE_ACCOUNT_NAME: $(STORAGE_ACCOUNT_NAME)
-      BLOB_CONTAINER_NAME:  $(BLOB_CONTAINER_NAME)
+      STORAGE_ACCOUNT_NAME:        $(STORAGE_ACCOUNT_NAME)
+      BLOB_CONTAINER_NAME:         $(BLOB_CONTAINER_NAME)
+      OUTPUT_STORAGE_ACCOUNT_NAME: $(OUTPUT_STORAGE_ACCOUNT_NAME)
+      OUTPUT_BLOB_CONTAINER_NAME:  $(OUTPUT_BLOB_CONTAINER_NAME)
 
   - task: PublishTestResults@2
     displayName: Publish JUnit results

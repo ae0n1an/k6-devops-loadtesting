@@ -5,6 +5,7 @@ import { getServicePrincipalToken } from '../lib/auth.js';
 import { uploadBlob }               from '../lib/blob.js';
 import { triggerPipeline, getPipelineRunStatus } from '../lib/adf.js';
 import { generatePayload }          from '../lib/payload.js';
+import { checkOutputBlob, getActivityRunCounts } from '../lib/verify.js';
 
 const gate = JSON.parse(open('../thresholds/gate.json'));
 
@@ -19,15 +20,17 @@ export const options = {
 const TERMINAL = new Set(['Succeeded', 'Failed', 'Cancelled']);
 
 export default function () {
-  const tenantId       = __ENV.TENANT_ID;
-  const clientId       = __ENV.CLIENT_ID;
-  const clientSecret   = __ENV.CLIENT_SECRET;
-  const subscriptionId = __ENV.SUBSCRIPTION_ID;
-  const resourceGroup  = __ENV.RESOURCE_GROUP;
-  const factoryName    = __ENV.ADF_FACTORY_NAME;
-  const pipelineName   = __ENV.ADF_PIPELINE_NAME;
-  const storageAccount = __ENV.STORAGE_ACCOUNT_NAME;
-  const containerName  = __ENV.BLOB_CONTAINER_NAME;
+  const tenantId            = __ENV.TENANT_ID;
+  const clientId            = __ENV.CLIENT_ID;
+  const clientSecret        = __ENV.CLIENT_SECRET;
+  const subscriptionId      = __ENV.SUBSCRIPTION_ID;
+  const resourceGroup       = __ENV.RESOURCE_GROUP;
+  const factoryName         = __ENV.ADF_FACTORY_NAME;
+  const pipelineName        = __ENV.ADF_PIPELINE_NAME;
+  const storageAccount      = __ENV.STORAGE_ACCOUNT_NAME;
+  const containerName       = __ENV.BLOB_CONTAINER_NAME;
+  const outputStorageAccount = __ENV.OUTPUT_STORAGE_ACCOUNT_NAME;
+  const outputContainerName  = __ENV.OUTPUT_BLOB_CONTAINER_NAME;
 
   // Step 1 — authenticate (two scopes: management for ADF, storage for blob)
   const mgmtToken    = getServicePrincipalToken(tenantId, clientId, clientSecret);
@@ -50,7 +53,8 @@ export default function () {
     return;
   }
 
-  // Step 3 — trigger pipeline
+  // Step 3 — trigger pipeline (record time so output blob search has a lower bound)
+  const triggerTime = Date.now();
   const runId = triggerPipeline(subscriptionId, resourceGroup, factoryName, pipelineName, mgmtToken);
 
   if (!runId) {
@@ -79,6 +83,12 @@ export default function () {
   check(runStatus, {
     'adf pipeline succeeded': (s) => s === 'Succeeded',
   });
+
+  // Step 6 — validate output only when pipeline succeeded
+  if (runStatus === 'Succeeded') {
+    checkOutputBlob(outputStorageAccount, outputContainerName, triggerTime, storageToken);
+    getActivityRunCounts(subscriptionId, resourceGroup, factoryName, runId, mgmtToken);
+  }
 }
 
 // ---------------------------------------------------------------------------

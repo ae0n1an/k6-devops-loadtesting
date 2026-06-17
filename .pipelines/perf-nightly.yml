@@ -1,7 +1,8 @@
 # .pipelines/perf-nightly.yml
 #
 # Required variable group "perf-tests-secrets" must contain:
-#   (same set as perf-gate.yml — see that file for the full list)
+#   (same set as perf-gate.yml — see that file for the full list, including
+#    OUTPUT_STORAGE_ACCOUNT_NAME and OUTPUT_BLOB_CONTAINER_NAME)
 #
 # This pipeline runs the smoke scenario nightly for visibility.
 # Switch to tests/scenarios/load.js if you want a full nightly soak test.
@@ -66,8 +67,10 @@ steps:
       RESOURCE_GROUP:       $(RESOURCE_GROUP)
       ADF_FACTORY_NAME:     $(ADF_FACTORY_NAME)
       ADF_PIPELINE_NAME:    $(ADF_PIPELINE_NAME)
-      STORAGE_ACCOUNT_NAME: $(STORAGE_ACCOUNT_NAME)
-      BLOB_CONTAINER_NAME:  $(BLOB_CONTAINER_NAME)
+      STORAGE_ACCOUNT_NAME:        $(STORAGE_ACCOUNT_NAME)
+      BLOB_CONTAINER_NAME:         $(BLOB_CONTAINER_NAME)
+      OUTPUT_STORAGE_ACCOUNT_NAME: $(OUTPUT_STORAGE_ACCOUNT_NAME)
+      OUTPUT_BLOB_CONTAINER_NAME:  $(OUTPUT_BLOB_CONTAINER_NAME)
 
   - task: PublishTestResults@2
     displayName: Publish JUnit results

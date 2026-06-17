@@ -60,8 +60,10 @@ export SUBSCRIPTION_ID="<Azure subscription ID>"
 export RESOURCE_GROUP="<Resource group name>"
 export ADF_FACTORY_NAME="<Data Factory name>"
 export ADF_PIPELINE_NAME="<Pipeline name>"
-export STORAGE_ACCOUNT_NAME="<Storage account name>"
-export BLOB_CONTAINER_NAME="<Container name>"
+export STORAGE_ACCOUNT_NAME="<Source storage account name>"
+export BLOB_CONTAINER_NAME="<Source container name>"
+export OUTPUT_STORAGE_ACCOUNT_NAME="<Output storage account name>"
+export OUTPUT_BLOB_CONTAINER_NAME="<Output container name>"
 
 # Smoke test (1 run, fast sanity check)
 k6 run tests/scenarios/smoke.js
@@ -121,12 +123,15 @@ each as secret / lock icon):
 | `RESOURCE_GROUP` | Resource group containing the ADF instance | Azure Portal → Resource groups |
 | `ADF_FACTORY_NAME` | Data Factory resource name | Azure Portal → Data factories |
 | `ADF_PIPELINE_NAME` | Name of the pipeline to trigger | ADF Studio → Author tab → Pipelines |
-| `STORAGE_ACCOUNT_NAME` | Storage account that hosts the blob container | Azure Portal → Storage accounts |
-| `BLOB_CONTAINER_NAME` | Container name where source data is uploaded | Storage account → Containers |
+| `STORAGE_ACCOUNT_NAME` | Storage account that hosts the source blob container | Azure Portal → Storage accounts |
+| `BLOB_CONTAINER_NAME` | Source container name where test data is uploaded | Storage account → Containers |
+| `OUTPUT_STORAGE_ACCOUNT_NAME` | Storage account where the pipeline writes output (ESFX blobs) | Azure Portal → Storage accounts |
+| `OUTPUT_BLOB_CONTAINER_NAME` | Output container name validated after pipeline completes | Storage account → Containers |
 
 The service principal (identified by `CLIENT_ID`) must have:
 - **Contributor** or **Data Factory Contributor** on the ADF instance
-- **Storage Blob Data Contributor** on the storage account / container
+- **Storage Blob Data Contributor** on the source storage account / container
+- **Storage Blob Data Reader** on the output storage account / container (for output blob validation)
 
 ### 2 — Import the pipelines
 
