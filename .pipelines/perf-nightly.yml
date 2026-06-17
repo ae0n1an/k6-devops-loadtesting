@@ -16,9 +16,23 @@ schedules:
         - main
     always: true   # run even if no new commits
 
-# NOTE: Switch to a self-hosted pool if ADF/storage are behind private endpoints.
-#   pool:
-#     name: <YOUR-SELF-HOSTED-POOL-NAME>   # TODO: set pool name
+# Pool options (pick one):
+#
+#   Microsoft-hosted (no k6 pre-installed):
+#     pool:
+#       vmImage: ubuntu-latest
+#
+#   Self-hosted agent pool (k6 pre-installed on the agent VM/image):
+#     pool:
+#       name: <YOUR-SELF-HOSTED-POOL-NAME>   # TODO: set pool name
+#
+#   Container job (k6 pre-installed in a Docker image):
+#     pool:
+#       vmImage: ubuntu-latest          # or a self-hosted pool
+#     container: <YOUR-REGISTRY>/<YOUR-IMAGE>:<TAG>   # TODO: set image
+#
+# NOTE: A self-hosted agent or container image is required if ADF/storage
+#       endpoints are behind a private network or VNet-injected.
 pool:
   vmImage: ubuntu-latest
 
@@ -26,13 +40,17 @@ variables:
   - group: perf-tests-secrets
 
 steps:
-  - script: |
-      curl -fsSL https://dl.k6.io/key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/k6-archive-keyring.gpg
-      echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" \
-        | sudo tee /etc/apt/sources.list.d/k6.list
-      sudo apt-get update -qq
-      sudo apt-get install -y k6
-    displayName: Install k6
+  # Remove or uncomment the block below if k6 is NOT pre-installed in your agent/container image.
+  # - script: |
+  #     curl -fsSL https://dl.k6.io/key.gpg | sudo gpg --dearmor -o /usr/share/keyrings/k6-archive-keyring.gpg
+  #     echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" \
+  #       | sudo tee /etc/apt/sources.list.d/k6.list
+  #     sudo apt-get update -qq
+  #     sudo apt-get install -y k6
+  #   displayName: Install k6
+
+  - script: k6 version
+    displayName: k6 version
 
   - script: mkdir -p results
     displayName: Create results directory
