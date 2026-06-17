@@ -5,7 +5,8 @@ import { getServicePrincipalToken } from '../lib/auth.js';
 import { uploadBlob }               from '../lib/blob.js';
 import { triggerPipeline, getPipelineRunStatus } from '../lib/adf.js';
 import { generatePayload }          from '../lib/payload.js';
-import gate from '../thresholds/gate.json';
+
+const gate = JSON.parse(open('../thresholds/gate.json'));
 
 const adfPipelineDuration = new Trend('adf_pipeline_duration_ms');
 
